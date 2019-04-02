@@ -1,106 +1,85 @@
-// Store our API endpoint inside queryUrl
+////// stored the API endpoint inside queryUrl
 var queryUrl ="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
-// Perform a GET request to the query URL
-d3.json(queryUrl, function(data) {
-
-  // Once we get a response, send the data.features object to the createFeatures function
-  createFeatures(data.features);    // data.features is where earthquake data is held
-  // console.log(data.features);
+//////  created a map object
+var myMap = L.map("map", {
+  center: [37.09, -95.71],
+  zoom: 5
 });
 
-function createFeatures(earthquakeData) {
-
-
-
-  // Created a for loops to iterate through each item in the properties object
-  // Give each feature a popup describing the place and magnitude of the earthquake
-  function onEachFeature(feature, layer) {
-    layer.bindPopup("hi");
-    // created a dict to store the name, location, and magnitude of each earthquake
-    earthquakes = {}
-
-    // stored the coordinates of earthquakes (as int) in variable, to 2 decimal places
-    let lng =parseFloat( feature.geometry.coordinates[0].toFixed(2));
-    let lat =parseFloat(feature.geometry.coordinates[1].toFixed(2));
-    let coordinates = [lat,lng];
-    earthquakes["location"] = coordinates;
-
-    // stored the magnitude of earthquakes (as int) in variable
-    let magnitude = feature.properties.mag;
-    earthquakes["magnitude"] = magnitude;
-
-    // stored the name of each earthquake and a descripton of where it occured
-    let name = feature.properties.place;
-    earthquakes['name'] = name;
-
-    // Loop through the cities array and create one marker for each city object
-    for (var i = 0; i < earthquakes.length; i++) {
-      
-      // layer.circle(earthquakes[i].location, {
-      //   fillOpacity: 0.75,
-      //   color: "white",
-      //   fillColor: "purple",
-      //   // Setting our circle's radius equal to the output of our markerSize function
-      //   // This will make our marker's size proportionate to its population
-      //   radius: markerSize(cities[i].magnitude)
-      // }).bindPopup("<h1>" + cities[i].name + "</h1> <hr> <h3>Magnitude: " + cities[i].magnitude + "</h3>").addTo(myMap);
-    }
-
-
-  console.log(earthquakes);
-
-
-
-//  Closing bracet to the 'onEachFeature' function
-  }
-
-
-
-
-  // Create a GeoJSON layer containing the features array on the earthquakeData object
-  // Run the onEachFeature function once for each piece of data in the array
-  var earthquakes = L.geoJSON(earthquakeData, {
-    onEachFeature: onEachFeature
-  }); 
-
-  // Sending our earthquakes layer to the createMap function
-  createMap(earthquakes);
-}
-
-function createMap(earthquakes) {
-
-  // Define basicMap layer
-  var basicMap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
   attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
   maxZoom: 18,
   id: "mapbox.streets-basic",
   accessToken: API_KEY
-  });
+}).addTo(myMap);
 
-  // Define a baseMaps object to hold our base layers
-  var baseMaps = {
-    "Basic Map": basicMap
-  };
+////////////////// 
 
-  // Create overlay object to hold our overlay layer
-  var overlayMaps = {
-    Earthquakes: earthquakes
-  };
 
-  // Create our map, giving it the streetmap and earthquakes layers to display on load
-  var myMap = L.map("map", {
-    center: [
-      37.09, -95.71
-    ],
-    zoom: 5,
-    layers: [basicMap, earthquakes]
-  });  
 
-  // Create a layer control
-  // Pass in our baseMaps and overlayMaps
-  // Add the layer control to the map
-  L.control.layers(baseMaps, overlayMaps, {
-    collapsed: false
-  }).addTo(myMap);
-}
+////// Perform a GET request to the query URL
+d3.json(queryUrl, function(data) {
+  var features = data.features; 
+  
+  ////// created an empty list to hold all of the earthquake objects
+  var earthquakes = [];
+  
+  ////// looping over each 'feature' or recorded event //////////////////////////////
+  for (var i = 0; i < features.length; i++) {
+    
+    ////// stored the name/location of each event
+    var name = features[i].properties.place;
+    
+    ////// stored the magnitude of each event
+    var magnitude = features[i].properties.mag;
+    
+    ////// stored the coordinates of each event
+    let lng =parseFloat( features[i].geometry.coordinates[0].toFixed(2));
+    let lat =parseFloat(features[i].geometry.coordinates[1].toFixed(2));
+    var coordinates = [lat,lng];
+    
+    ////// created a constructor function to create an earthquakes list of event objects
+    function Earthquake(name, magnitude, coordinates) {
+      this.name = name; 
+      this.magnitude = magnitude;
+      this.coordinates = coordinates;
+    }
+    
+    ////// called the constructor and pushed the created object to the earthquakes list
+    earthquakes.push(new Earthquake(name, magnitude, coordinates));
+    
+  }  ////// this is the closing bracket for the for loop  /////////////////////////////////////////
+  
+  ////// pass each earthquake magnitude through the quakeSize function to normalize
+  function quakeSize(magnitude) {
+    return (15000 * magnitude);
+  }
+  
+////////  used the choropleth method to create quakeColor function to gradient earthquakes
+  function quakeColor(magnitude) {
+    return magnitude < 1  ? "#168f48" :
+    magnitude >=1 && magnitude <2  ? "#e1f34d" :
+    magnitude >=2 && magnitude <3  ? "#f3db4d" :
+    magnitude >=3 && magnitude <4  ? "#f3ba4d" :
+    magnitude >=4 && magnitude <5  ? "#f0a76b" :
+                                      "FF0000";
+  }   ////// https://leafletjs.com/examples/choropleth/
+  
+  ////// for loop to create each circle on the map
+  for (var i = 0; i < earthquakes.length; i++) {
+    L.circle(earthquakes[i].coordinates, {
+      color: quakeColor(earthquakes[i].magnitude), // need to create a color function giving the different scales 
+      radius: quakeSize(earthquakes[i].magnitude),
+    }).bindPopup("<h3>" + earthquakes[i].name +"</h3><hr><p> Magnitude: " + earthquakes[i].magnitude + "</p>")
+    .addTo(myMap);
+  }
+  
+  
+  }    ////// this is the closing bracket for the d3.json function parameter  /////////////////////////////////////////
+);     ////// this is the closing bracket to 'd3.json' request  /////////////////////////////////////////
+
+
+
+
+
