@@ -14,18 +14,14 @@ L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={
   accessToken: API_KEY
 }).addTo(myMap);
 
-////////////////// 
-
-
-
-////// Perform a GET request to the query URL
+////// Perform a GET request to the query URL //////////////////////////////
 d3.json(queryUrl, function(data) {
   var features = data.features; 
   
   ////// created an empty list to hold all of the earthquake objects
   var earthquakes = [];
   
-  ////// looping over each 'feature' or recorded event //////////////////////////////
+  ////// looping over each 'feature' or recorded event ////////////////////
   for (var i = 0; i < features.length; i++) {
     
     ////// stored the name/location of each event
@@ -49,11 +45,10 @@ d3.json(queryUrl, function(data) {
     ////// called the constructor and pushed the created object to the earthquakes list
     earthquakes.push(new Earthquake(name, magnitude, coordinates));
     
-  }  ////// this is the closing bracket for the for loop  /////////////////////////////////////////
-  
+  }
   ////// pass each earthquake magnitude through the quakeSize function to normalize
   function quakeSize(magnitude) {
-    return (15000 * magnitude);
+    return (10000 * magnitude);
   }
   
 ////////  used the choropleth method to create quakeColor function to gradient earthquakes
@@ -75,9 +70,31 @@ d3.json(queryUrl, function(data) {
     .addTo(myMap);
   }
   
+  //////////  created a legend displaying the gradient for earthquake magnitudes
+  var legend = L.control({
+    position: "bottomright"
+  });
+  
+  legend.onAdd = function() {
+    var div = L.DomUtil.create("div", "info legend"),
+    grades = [0, 1, 2, 3, 4, 5],
+    colors = ["#168f48","#e1f34d","#f3db4d","#f3ba4d","#f0a76b","#FF0000"];
+  
+  ////////  created the html to be displayed in the legend
+    for (var i = 0; i < grades.length; i++) {
+      div.innerHTML +=
+      "<i style='background: " + colors[i] + "'></i> " +
+        grades[i] + (grades[i + 1] ? "&ndash;" + grades[i + 1] + "<br>" : "+");
+    }
+  
+    return div;
+  };
+  
+  
+  legend.addTo(myMap);
   
   }    ////// this is the closing bracket for the d3.json function parameter  /////////////////////////////////////////
-);     ////// this is the closing bracket to 'd3.json' request  /////////////////////////////////////////
+  );     ////// this is the closing bracket to 'd3.json' request  /////////////////////////////////////////
 
 
 
